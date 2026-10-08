@@ -14,6 +14,7 @@
         <module>protocol</module>
         <module>master</module>
         <module>worker</module>
+        <module>cli</module>
     </modules>
 
     <properties>
