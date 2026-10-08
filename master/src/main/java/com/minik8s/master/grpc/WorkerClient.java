@@ -9,4 +9,12 @@ public interface WorkerClient {
 
     /** Must be safe to retry for the same replica ID. */
     void stopReplica(String workerId, String replicaId);
+
+    /**
+     * Sends a health/ping request over gRPC to check if the target worker node is responsive.
+     * Returns true if worker ping succeeds, false otherwise.
+     */
+    default boolean checkHealth(String workerId, String host, int grpcPort) {
+        return true;
+    }
 }
