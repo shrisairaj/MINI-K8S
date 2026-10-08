@@ -11,12 +11,17 @@
     <name>Mini-K8s</name>
 
     <modules>
+        <module>protocol</module>
         <module>master</module>
+        <module>worker</module>
     </modules>
 
     <properties>
         <java.version>21</java.version>
         <spring-boot.version>3.4.4</spring-boot.version>
+        <grpc.version>1.69.0</grpc.version>
+        <protobuf.version>3.25.5</protobuf.version>
+        <docker-java.version>3.4.1</docker-java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -48,6 +53,16 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.xolstice.maven.plugins</groupId>
+                    <artifactId>protobuf-maven-plugin</artifactId>
+                    <version>0.6.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>kr.motd.maven</groupId>
+                    <artifactId>os-maven-plugin</artifactId>
+                    <version>1.7.1</version>
                 </plugin>
             </plugins>
         </pluginManagement>

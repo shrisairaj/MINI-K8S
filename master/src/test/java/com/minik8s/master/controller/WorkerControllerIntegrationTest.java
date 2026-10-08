@@ -3,7 +3,14 @@ package com.minik8s.master.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minik8s.master.model.WorkerStatus;
+import com.minik8s.master.grpc.WorkerClient;
+import com.minik8s.master.model.ResourceRequest;
 import com.minik8s.master.registry.WorkerRegistry;
+import com.minik8s.master.registry.WorkerRegistration;
+import com.minik8s.master.model.WorkerResources;
+import com.minik8s.master.replica.ReplicaManager;
+import com.minik8s.master.replica.ReplicaWorkload;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,6 +30,12 @@ class WorkerControllerIntegrationTest {
 
     @Autowired
     private WorkerRegistry workerRegistry;
+
+        @Autowired
+        private ReplicaManager replicaManager;
+
+        @MockitoBean
+        private WorkerClient workerClient;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -65,4 +78,23 @@ class WorkerControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(invalid))
                 .andExpect(status().isBadRequest());
     }
+
+        @Test
+        void workerReplicaStatusCallbackUpdatesExistingReplicaManager() throws Exception {
+                WorkerResources resources = new WorkerResources(4000, 8_000, 4000, 8_000);
+                workerRegistry.registerWorker(new WorkerRegistration("status-worker", "localhost", 9193, resources));
+                workerRegistry.updateHeartbeat("status-worker", resources);
+                replicaManager.updateDesiredState(new ReplicaWorkload("status-deployment", "nginx:stable", 1,
+                                new ResourceRequest(100, 100)));
+                var pending = replicaManager.reconcile("status-deployment").replicas().getFirst();
+
+                mockMvc.perform(post("/api/internal/workers/status-worker/replicas/status")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("""
+                                                                {"deploymentId":"status-deployment","replicaId":"%s","status":"RUNNING"}
+                                                                """.formatted(pending.replicaId())))
+                                .andExpect(status().isAccepted());
+
+                assertEquals(1, replicaManager.getSnapshot("status-deployment").runningCount());
+        }
 }

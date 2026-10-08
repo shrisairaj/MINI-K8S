@@ -1,36 +1,79 @@
 # Mini-K8s
 
-Mini-K8s is an educational container-orchestration project. This repository currently implements the Member 1 Master control-plane scope: Worker Registry, resource-aware scheduling, and replica management. Worker execution and Docker integration remain on the Worker side.
+Mini-K8s is an educational, Kubernetes-inspired container orchestration platform. A Spring Boot Master acts as the control plane, scheduling workloads to Worker nodes over gRPC. Workers manage containers through Docker Engine. The planned project also includes a CLI, deployment management, health monitoring, and observability.
+
+## Implemented so far
+
+### Master control plane
+
+- In-memory, thread-safe Worker Registry with registration, heartbeat, lifecycle state, resource information, and placement reservations.
+- Resource-aware least-loaded scheduling behind a replaceable scheduling strategy.
+- Replica Manager for desired/actual replica tracking, scale up/down, reconciliation, Worker failure handling, and replacement.
+- Worker REST APIs for registration, heartbeat, lookup, listing, removal, and unavailable status.
+- Master gRPC client implementing the existing `WorkerClient` contract.
+- Worker status callback that validates the reporting Worker and updates replica state through the existing Replica Manager.
+
+### Shared protocol and Worker node
+
+- Shared Protocol Buffers/gRPC contract in `protocol/src/main/proto/worker.proto`.
+- Worker Spring Boot module with a gRPC server for starting, stopping, removing, inspecting, and listing replicas, and reporting Worker status/resources.
+- Docker Java SDK integration behind a `ContainerRuntime` abstraction. Replica IDs and Docker labels support idempotent operations and container rediscovery after a Worker restart.
+- Worker registration and periodic heartbeat to the Master, plus replica status reporting.
+- CPU is reported in millicores and memory in bytes, consistent with the Master models.
+
+### Tests
+
+- `mvn clean test` passes across the protocol, Master, and Worker modules: 41 tests, no failures or errors.
+- Tests mock Docker interactions, so they do not require a Docker daemon.
+
+## Remaining work
+
+- Implement Deployment Management, including YAML parsing/validation and REST endpoints that call `ReplicaManager.updateDesiredState(...)`.
+- Implement the CLI and connect its deploy/scale/get/delete commands to the Master REST API.
+- Implement a dedicated Health Monitor for heartbeat timeouts and Worker health transitions; the Worker currently reports unavailable if Docker resource checks fail.
+- Implement monitoring/observability (for example, metrics and dashboards) and connect it to Worker/replica state.
+- Add end-to-end testing with Docker Engine running. Docker was unavailable during development, so real container startup has not been smoke-tested.
+- Add persistence if state must survive Master restart; Master desired/actual replica state is currently in memory.
+- Before non-local deployment: secure gRPC transport and internal Worker status/health endpoints, and review authentication/authorization.
+- Add rolling updates and workload-template change handling; initial reconciliation maintains replica count only.
 
 ## Requirements
 
 - Java 21
 - Maven 3.9+
+- Docker Engine for running Workers and starting real containers
 
-## Build and test
+## Build and run
 
-From the repository root, run `mvn test`.
+From the repository root:
 
-Run the Master application with `mvn -pl master spring-boot:run`. The Worker Registry REST API listens on port 8080 by default.
+```sh
+mvn clean test
+mvn install -DskipTests
+```
 
-## Ownership and integration
+Start the Master and Worker in separate terminals:
 
-- `WorkerRegistry` is the Master-side source of Worker lifecycle, heartbeat, resource, and reservation state.
-- `Scheduler` and `SchedulingStrategy` decide placement; they do not start containers.
-- `ReplicaManager` tracks desired and actual replicas and reconciles them through `WorkerClient`.
-- `WorkerClient` is an integration interface. The gRPC adapter and protocol are intentionally not implemented here; Member 2 should implement the adapter against the agreed proto.
-- Deployment Management should call `ReplicaManager.updateDesiredState(...)` and `reconcile(...)`. A scheduled adapter invokes reconciliation periodically.
-- Health Monitoring should update Worker state through `WorkerRegistry`; each reconciliation detects `UNAVAILABLE`/`REMOVED` assigned Workers and marks their replicas failed. A monitor can also call `handleWorkerUnavailable(...)` for immediate event-driven handling and report individual replica state through `reportReplicaStatus(...)`.
-- The first version reconciles replica count, not rolling updates: changing an image or resource template affects newly created replicas; replacing existing replicas for template changes belongs in a later rollout feature.
+```sh
+mvn -pl master spring-boot:run
+mvn -pl worker spring-boot:run
+```
 
-Replica operations are serialized per deployment to make scaling and reconciliation idempotent. Worker RPCs should have deadlines and idempotent semantics keyed by replica ID. A definite start rejection must use `WorkerOperationRejectedException`; transport failures with uncertain outcomes leave the replica `STARTING` until Worker status resolves them, avoiding duplicate starts. Stop operations are retried idempotently while `STOPPING`. The initial state store is in-memory and is lost when the Master restarts.
+Master REST listens on port 8080. Worker gRPC listens on port 9091 by default and registers with `http://localhost:8080`. Configure the Worker with `WORKER_ID`, `WORKER_HOST`, `WORKER_GRPC_PORT`, and `MASTER_URL`. Additional local Workers need unique IDs and gRPC ports.
 
 ## Worker Registry API
 
-- `POST /api/workers/register` — register or re-register a Worker. A matching registration is idempotent; a heartbeat moves it to `READY`.
-- `POST /api/workers/{workerId}/heartbeat` — refresh heartbeat and reported available resources; marks the Worker `READY`.
-- `GET /api/workers` — list known Workers.
-- `GET /api/workers/{workerId}` — look up one Worker.
-- `DELETE /api/workers/{workerId}` — mark a Worker `REMOVED`.
+- `POST /api/workers/register` — register or re-register a Worker.
+- `POST /api/workers/{workerId}/heartbeat` — report heartbeat and available resources; marks a registering/unavailable Worker ready.
+- `POST /api/workers/{workerId}/unavailable` — mark a Worker unavailable.
+- `GET /api/workers` and `GET /api/workers/{workerId}` — list or retrieve Workers.
+- `DELETE /api/workers/{workerId}` — mark a Worker removed.
 
-Registration includes Worker ID, host, gRPC port, total CPU in millicores, total memory in bytes, and currently available CPU/memory in the same units. Scheduler capacity is conservatively bounded by both reported free resources and resources not already reserved by the Master.
+Replica status reports use `POST /api/internal/workers/{workerId}/replicas/status`.
+
+## Architecture boundaries
+
+- The Master decides placement and desired state; it never calls Docker directly.
+- `WorkerClient`/gRPC connects the Master to Worker nodes.
+- Workers own Docker container lifecycle and report observed state to the Master.
+- Master and Worker metadata is currently in-memory. The local gRPC channel uses plaintext and should be secured before deployment outside a trusted environment.

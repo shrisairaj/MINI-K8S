@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: mini-k8s-worker
+  main:
+    web-application-type: none
+
+minik8s:
+  worker:
+    id: ${WORKER_ID:worker-1}
+    host: ${WORKER_HOST:127.0.0.1}
+    grpc-port: ${WORKER_GRPC_PORT:9091}
+    master-url: ${MASTER_URL:http://localhost:8080}
+    heartbeat-delay: ${WORKER_HEARTBEAT_DELAY:5000}
+    grpc-deadline-millis: ${WORKER_GRPC_DEADLINE_MILLIS:3000}

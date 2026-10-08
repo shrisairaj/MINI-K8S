@@ -53,4 +53,9 @@ public class WorkerController {
     public Worker removeWorker(@PathVariable("workerId") String workerId) {
         return workerRegistry.unregisterWorker(workerId);
     }
+
+    @PostMapping("/{workerId}/unavailable")
+    public Worker markUnavailable(@PathVariable("workerId") String workerId) {
+        return workerRegistry.updateStatus(workerId, com.minik8s.master.model.WorkerStatus.UNAVAILABLE);
+    }
 }
