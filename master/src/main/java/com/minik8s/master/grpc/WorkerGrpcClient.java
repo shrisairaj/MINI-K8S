@@ -66,6 +66,21 @@ public class WorkerGrpcClient implements WorkerClient {
         }
     }
 
+    @Override
+    public boolean checkHealth(String workerId, String host, int grpcPort) {
+        Worker worker = workerRegistry.getWorker(workerId).orElse(null);
+        if (worker == null) {
+            return false;
+        }
+        try {
+            var stub = stub(worker);
+            var reply = stub.getWorkerStatus(com.minik8s.protocol.worker.v1.WorkerStatusRequest.newBuilder().setWorkerId(workerId).build());
+            return reply != null;
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
     @PreDestroy
     public void close() {
         channels.values().forEach(entry -> entry.channel().shutdownNow());
