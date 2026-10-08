@@ -225,7 +225,7 @@ public class ReplicaManager {
 
     private ReplicaSnapshot snapshot(String deploymentId, DeploymentState state) {
         return new ReplicaSnapshot(deploymentId, state.workload.desiredReplicas(),
-                state.replicas.values().stream().sorted(Comparator.comparing(Replica::createdAt)).toList());
+                state.replicas.values().stream().sorted(Comparator.comparing(Replica::createdAt).thenComparing(Replica::replicaId)).toList());
     }
 
     private static boolean occupiesSlot(Replica replica) {

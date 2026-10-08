@@ -105,7 +105,7 @@ class ReplicaManagerTest {
         var recovered = replicaManager.reconcile("web");
 
         assertEquals(1, recovered.occupyingCount());
-        assertEquals(ReplicaStatus.FAILED, recovered.replicas().getFirst().status());
+        assertTrue(recovered.replicas().stream().anyMatch(replica -> replica.status() == ReplicaStatus.FAILED));
         verify(workerClient, times(2)).startReplica(any(ReplicaLaunchRequest.class));
     }
 

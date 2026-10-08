@@ -1,12 +1,24 @@
 spring:
   application:
     name: mini-k8s-master
+  main:
+    allow-bean-definition-overriding: true
 
 server:
   port: 8080
+
+health:
+  monitor:
+    interval: 5000
+    timeout: 2000
 
 minik8s:
   grpc:
     deadline-millis: 3000
   reconciliation:
     fixed-delay: 5000
+  health:
+    monitor:
+      interval: 5000
+      timeout: 2000
+      heartbeat-timeout: 15000
