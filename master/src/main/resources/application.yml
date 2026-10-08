@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: mini-k8s-master
+
+server:
+  port: 8080
+
+minik8s:
+  reconciliation:
+    fixed-delay: 5000
