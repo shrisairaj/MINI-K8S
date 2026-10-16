@@ -56,6 +56,26 @@ public class ReplicaManager {
         return deployments.keySet().stream().sorted().map(this::reconcile).toList();
     }
 
+    public List<ReplicaSnapshot> getAllSnapshots() {
+        return deployments.keySet().stream().sorted().map(this::getSnapshot).toList();
+    }
+
+    public void deleteDeployment(String deploymentId) {
+        DeploymentState state = deployments.get(deploymentId);
+        if (state == null) {
+            return;
+        }
+        synchronized (state) {
+            state.workload = new ReplicaWorkload(
+                    deploymentId,
+                    state.workload.image(),
+                    0,
+                    state.workload.resources());
+            reconcileLocked(deploymentId, state);
+            deployments.remove(deploymentId);
+        }
+    }
+
     public ReplicaSnapshot getSnapshot(String deploymentId) {
         DeploymentState state = requireDeployment(deploymentId);
         synchronized (state) {
@@ -66,7 +86,13 @@ public class ReplicaManager {
     public ReplicaSnapshot reportReplicaStatus(String deploymentId, String replicaId, String workerId,
                                                ReplicaStatus reportedStatus) {
         Objects.requireNonNull(reportedStatus, "reportedStatus");
-        DeploymentState state = requireDeployment(deploymentId);
+        DeploymentState state = deployments.get(deploymentId);
+        if (state == null) {
+            if (reportedStatus == ReplicaStatus.FAILED || reportedStatus == ReplicaStatus.STOPPED) {
+                workerRegistry.releaseResources(workerId, replicaId);
+            }
+            return null;
+        }
         synchronized (state) {
             Replica replica = state.replicas.get(replicaId);
             if (replica == null) {

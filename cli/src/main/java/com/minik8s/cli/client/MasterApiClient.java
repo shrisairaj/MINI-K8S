@@ -6,6 +6,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.minik8s.cli.exception.MasterApiException;
 import com.minik8s.cli.exception.MasterUnavailableException;
 import com.minik8s.cli.exception.ProblemDetail;
+import com.minik8s.cli.model.CreateDeploymentRequest;
+import com.minik8s.cli.model.DeploymentResponse;
+import com.minik8s.cli.model.ReplicaResponse;
 import com.minik8s.cli.model.WorkerResponse;
 
 import java.io.IOException;
@@ -29,15 +32,12 @@ import java.util.List;
  * <ul>
  *   <li>{@code GET /api/workers}        — list all registered workers</li>
  *   <li>{@code GET /api/workers/{id}}   — get a single worker by ID</li>
- * </ul>
- *
- * <h2>Pending Endpoints (not yet implemented by Member 1)</h2>
- * <ul>
- *   <li>{@code POST /api/deployments}              — create deployment</li>
- *   <li>{@code GET  /api/deployments}              — list deployments</li>
- *   <li>{@code GET  /api/deployments/{id}}         — get deployment</li>
- *   <li>{@code DELETE /api/deployments/{id}}       — delete deployment</li>
- *   <li>{@code GET  /api/deployments/{id}/replicas} — list replicas/containers</li>
+ *   <li>{@code POST /api/deployments}   — create deployment</li>
+ *   <li>{@code GET /api/deployments}    — list deployments</li>
+ *   <li>{@code GET /api/deployments/{id}} — get single deployment</li>
+ *   <li>{@code DELETE /api/deployments/{id}} — delete deployment</li>
+ *   <li>{@code GET /api/replicas}       — list all replicas across cluster</li>
+ *   <li>{@code GET /api/deployments/{id}/replicas} — list replicas for deployment</li>
  * </ul>
  *
  * <h2>Error Handling</h2>
@@ -55,6 +55,12 @@ public class MasterApiClient {
 
     /** Base path for the Worker Registry API. */
     private static final String PATH_WORKERS = "/api/workers";
+
+    /** Base path for the Deployment API. */
+    private static final String PATH_DEPLOYMENTS = "/api/deployments";
+
+    /** Base path for the Replica API. */
+    private static final String PATH_REPLICAS = "/api/replicas";
 
     /** Request timeout for all HTTP calls. */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
@@ -130,18 +136,61 @@ public class MasterApiClient {
     }
 
     // -----------------------------------------------------------------------
-    // Future API stubs (placeholders for Member 1 integration)
+    // Deployment & Replica APIs
     // -----------------------------------------------------------------------
-    //
-    // When Member 1 implements deployment endpoints, add methods here:
-    //
-    //   public DeploymentResponse createDeployment(CreateDeploymentRequest req) { ... }
-    //   public List<DeploymentResponse> listDeployments() { ... }
-    //   public void deleteDeployment(String deploymentId) { ... }
-    //   public List<ReplicaResponse> listReplicas(String deploymentId) { ... }
-    //
-    // Keep all path constants and request/response models inside this file
-    // and the model package.
+
+    public DeploymentResponse createDeployment(CreateDeploymentRequest req) {
+        if (req == null) {
+            throw new IllegalArgumentException("Deployment request must not be null");
+        }
+        HttpRequest request = buildPostRequest(PATH_DEPLOYMENTS, req);
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+        return parseBody(response.body(), new TypeReference<DeploymentResponse>() {});
+    }
+
+    public DeploymentResponse getDeployment(String deploymentId) {
+        if (deploymentId == null || deploymentId.isBlank()) {
+            throw new IllegalArgumentException("deploymentId must not be blank");
+        }
+        HttpRequest request = buildGetRequest(PATH_DEPLOYMENTS + "/" + deploymentId);
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+        return parseBody(response.body(), new TypeReference<DeploymentResponse>() {});
+    }
+
+    public List<DeploymentResponse> listDeployments() {
+        HttpRequest request = buildGetRequest(PATH_DEPLOYMENTS);
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+        return parseBody(response.body(), new TypeReference<List<DeploymentResponse>>() {});
+    }
+
+    public void deleteDeployment(String deploymentId) {
+        if (deploymentId == null || deploymentId.isBlank()) {
+            throw new IllegalArgumentException("deploymentId must not be blank");
+        }
+        HttpRequest request = buildDeleteRequest(PATH_DEPLOYMENTS + "/" + deploymentId);
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+    }
+
+    public List<ReplicaResponse> listReplicas() {
+        HttpRequest request = buildGetRequest(PATH_REPLICAS);
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+        return parseBody(response.body(), new TypeReference<List<ReplicaResponse>>() {});
+    }
+
+    public List<ReplicaResponse> listDeploymentReplicas(String deploymentId) {
+        if (deploymentId == null || deploymentId.isBlank()) {
+            throw new IllegalArgumentException("deploymentId must not be blank");
+        }
+        HttpRequest request = buildGetRequest(PATH_DEPLOYMENTS + "/" + deploymentId + "/replicas");
+        HttpResponse<String> response = sendRequest(request);
+        checkSuccess(response);
+        return parseBody(response.body(), new TypeReference<List<ReplicaResponse>>() {});
+    }
 
     // -----------------------------------------------------------------------
     // Internal HTTP helpers
@@ -151,6 +200,30 @@ public class MasterApiClient {
         return HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + path))
                 .GET()
+                .header("Accept", "application/json")
+                .timeout(REQUEST_TIMEOUT)
+                .build();
+    }
+
+    private HttpRequest buildPostRequest(String path, Object body) {
+        try {
+            String json = objectMapper.writeValueAsString(body);
+            return HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + path))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .timeout(REQUEST_TIMEOUT)
+                    .build();
+        } catch (IOException e) {
+            throw new MasterApiException("Could not serialize request body: " + e.getMessage(), -1, e);
+        }
+    }
+
+    private HttpRequest buildDeleteRequest(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .DELETE()
                 .header("Accept", "application/json")
                 .timeout(REQUEST_TIMEOUT)
                 .build();

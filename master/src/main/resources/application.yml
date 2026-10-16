@@ -14,7 +14,7 @@ health:
 
 minik8s:
   grpc:
-    deadline-millis: 3000
+    deadline-millis: 60000
   reconciliation:
     fixed-delay: 5000
   health:

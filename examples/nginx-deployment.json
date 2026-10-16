@@ -1,0 +1,7 @@
+{
+  "id": "nginx-web",
+  "name": "nginx-web",
+  "image": "nginx:alpine",
+  "replicas": 2,
+  "containerPort": 80
+}

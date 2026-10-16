@@ -1,10 +1,16 @@
 package com.minik8s.worker.config;
 
+import java.time.Duration;
+import java.util.Locale;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import com.minik8s.worker.docker.ContainerRuntime;
 import com.minik8s.worker.docker.DockerJavaContainerRuntime;
@@ -12,17 +18,20 @@ import com.minik8s.worker.grpc.GrpcWorkerServer;
 import com.minik8s.worker.grpc.WorkerGrpcService;
 import com.minik8s.worker.service.WorkerContainerService;
 import com.minik8s.worker.service.WorkerResourceProvider;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import java.time.Duration;
 
 @Configuration
 public class WorkerConfiguration {
     @Bean(destroyMethod = "close")
-    DockerClient dockerClient() {
-        DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+    public DockerClient dockerClient() {
+        DefaultDockerClientConfig.Builder configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder();
+        String dockerHost = System.getenv("WORKER_DOCKER_HOST");
+        if (dockerHost != null && !dockerHost.isBlank()) {
+            configBuilder.withDockerHost(dockerHost);
+        } else if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win")) {
+            configBuilder.withDockerHost("npipe:////./pipe/docker_engine");
+        }
+        DockerClientConfig config = configBuilder.build();
+        DockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
                 .dockerHost(config.getDockerHost())
                 .sslConfig(config.getSSLConfig())
                 .maxConnections(100)

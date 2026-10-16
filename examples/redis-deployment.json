@@ -1,0 +1,7 @@
+{
+  "id": "redis-cache",
+  "name": "redis-cache",
+  "image": "redis:alpine",
+  "replicas": 1,
+  "containerPort": 6379
+}

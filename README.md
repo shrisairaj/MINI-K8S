@@ -1,79 +1,93 @@
 # Mini-K8s
 
-Mini-K8s is an educational, Kubernetes-inspired container orchestration platform. A Spring Boot Master acts as the control plane, scheduling workloads to Worker nodes over gRPC. Workers manage containers through Docker Engine. The planned project also includes a CLI, deployment management, health monitoring, and observability.
+Mini-K8s is an educational, Kubernetes-inspired container orchestration platform. A Spring Boot Master acts as the control plane, scheduling workloads to Worker nodes over gRPC. Workers manage containers through Docker Engine. The project includes a CLI (`minik8s`), deployment management, health monitoring, and cluster status observation.
 
-## Implemented so far
+## Implemented Features
 
-### Master control plane
+### Master Control Plane
+- **Worker Registry**: In-memory, thread-safe Worker Registry with registration, heartbeat, lifecycle state, resource tracking, and placement reservations.
+- **Resource-Aware Scheduling**: Least-loaded scheduling strategy selecting workers based on available CPU and memory.
+- **Replica Manager**: Desired vs. actual replica tracking, scaling up/down, reconciliation loop, worker failure failover, and container state synchronization.
+- **Deployment Management (`DeploymentController`)**:
+  - `POST /api/deployments` — create or scale deployments.
+  - `GET /api/deployments` — list all deployments with running replica counts.
+  - `GET /api/deployments/{id}` — retrieve deployment details and status.
+  - `DELETE /api/deployments/{id}` — scale down to 0 and remove deployment.
+  - `GET /api/replicas` and `GET /api/deployments/{id}/replicas` — inspect cluster-wide or deployment-specific containers.
+- **Cluster Status API (`/api/cluster/status`)**: Aggregated cluster health report with total workers, healthy workers, and running containers.
+- **Worker REST APIs**: Registration, heartbeat, lookup, listing, removal, and health status callback.
 
-- In-memory, thread-safe Worker Registry with registration, heartbeat, lifecycle state, resource information, and placement reservations.
-- Resource-aware least-loaded scheduling behind a replaceable scheduling strategy.
-- Replica Manager for desired/actual replica tracking, scale up/down, reconciliation, Worker failure handling, and replacement.
-- Worker REST APIs for registration, heartbeat, lookup, listing, removal, and unavailable status.
-- Master gRPC client implementing the existing `WorkerClient` contract.
-- Worker status callback that validates the reporting Worker and updates replica state through the existing Replica Manager.
+### Shared Protocol & Worker Node
+- **gRPC Contract**: Protocol Buffers contract in `protocol/src/main/proto/worker.proto`.
+- **Worker Node**: Spring Boot service with a gRPC server for starting, stopping, removing, inspecting, and listing replicas.
+- **Docker Engine Integration**: Docker Java SDK (`docker-java`) integration behind a `ContainerRuntime` abstraction with idempotent label-based tracking (`minik8s.replica-id`).
+- **Heartbeat & Status Reporter**: Periodic heartbeat to Master with live CPU millicores and memory statistics.
 
-### Shared protocol and Worker node
+### CLI (`minik8s`)
+- **Picocli-powered CLI**: Packaged as a shaded fat JAR and executable via `minik8s.cmd`.
+- `minik8s deploy <name> --image <image> --replicas <count> --port <port>` — deploy workload.
+- `minik8s get workers` — list registered workers and available capacity.
+- `minik8s get deployments` — list all deployments and status.
+- `minik8s get containers [-d <deploymentId>]` — list running container replicas.
+- `minik8s delete <name>` — delete a deployment from the cluster.
 
-- Shared Protocol Buffers/gRPC contract in `protocol/src/main/proto/worker.proto`.
-- Worker Spring Boot module with a gRPC server for starting, stopping, removing, inspecting, and listing replicas, and reporting Worker status/resources.
-- Docker Java SDK integration behind a `ContainerRuntime` abstraction. Replica IDs and Docker labels support idempotent operations and container rediscovery after a Worker restart.
-- Worker registration and periodic heartbeat to the Master, plus replica status reporting.
-- CPU is reported in millicores and memory in bytes, consistent with the Master models.
-
-### Tests
-
-- `mvn clean test` passes across the protocol, Master, and Worker modules: 41 tests, no failures or errors.
-- Tests mock Docker interactions, so they do not require a Docker daemon.
-
-## Remaining work
-
-- Implement Deployment Management, including YAML parsing/validation and REST endpoints that call `ReplicaManager.updateDesiredState(...)`.
-- Implement the CLI and connect its deploy/scale/get/delete commands to the Master REST API.
-- Implement a dedicated Health Monitor for heartbeat timeouts and Worker health transitions; the Worker currently reports unavailable if Docker resource checks fail.
-- Implement monitoring/observability (for example, metrics and dashboards) and connect it to Worker/replica state.
-- Add end-to-end testing with Docker Engine running. Docker was unavailable during development, so real container startup has not been smoke-tested.
-- Add persistence if state must survive Master restart; Master desired/actual replica state is currently in memory.
-- Before non-local deployment: secure gRPC transport and internal Worker status/health endpoints, and review authentication/authorization.
-- Add rolling updates and workload-template change handling; initial reconciliation maintains replica count only.
+---
 
 ## Requirements
 
-- Java 21
-- Maven 3.9+
-- Docker Engine for running Workers and starting real containers
+- **Java 21+** (Java 25 compatible)
+- **Maven 3.9+**
+- **Docker Engine / Docker Desktop** (running on your host machine for real container execution)
 
-## Build and run
+---
 
-From the repository root:
+## Build and Run
 
-```sh
+### 1. Build the Entire Project
+```cmd
 mvn clean test
-mvn install -DskipTests
+mvn package -DskipTests
 ```
 
-Start the Master and Worker in separate terminals:
+### 2. Start the Master Node (Terminal 1)
+```cmd
+start-master.bat
+# Or manually: mvn -pl master spring-boot:run
+```
+Master REST listens on `http://localhost:8080`.
 
-```sh
-mvn -pl master spring-boot:run
-mvn -pl worker spring-boot:run
+### 3. Start the Worker Node (Terminal 2)
+Ensure **Docker Desktop is running**, then:
+```cmd
+start-worker.bat
+# Or manually: mvn -pl worker spring-boot:run
+```
+Worker gRPC listens on port `9091` and registers with Master at `http://localhost:8080`.
+
+### 4. Use the CLI (Terminal 3)
+```cmd
+# Check registered workers
+minik8s get workers
+
+# Deploy a web service (e.g. Nginx with 2 replicas)
+minik8s deploy nginx --image nginx:alpine --replicas 2 --port 80
+
+# List deployments
+minik8s get deployments
+
+# Inspect running containers
+minik8s get containers
+
+# Delete the deployment
+minik8s delete nginx
 ```
 
-Master REST listens on port 8080. Worker gRPC listens on port 9091 by default and registers with `http://localhost:8080`. Configure the Worker with `WORKER_ID`, `WORKER_HOST`, `WORKER_GRPC_PORT`, and `MASTER_URL`. Additional local Workers need unique IDs and gRPC ports.
+---
 
-## Worker Registry API
+## Remaining Work & Future Roadmap
 
-- `POST /api/workers/register` — register or re-register a Worker.
-- `POST /api/workers/{workerId}/heartbeat` — report heartbeat and available resources; marks a registering/unavailable Worker ready.
-- `POST /api/workers/{workerId}/unavailable` — mark a Worker unavailable.
-- `GET /api/workers` and `GET /api/workers/{workerId}` — list or retrieve Workers.
-- `DELETE /api/workers/{workerId}` — mark a Worker removed.
-
-Replica status reports use `POST /api/internal/workers/{workerId}/replicas/status`.
-
-## Architecture boundaries
-
-- The Master decides placement and desired state; it never calls Docker directly.
-- `WorkerClient`/gRPC connects the Master to Worker nodes.
-- Workers own Docker container lifecycle and report observed state to the Master.
-- Master and Worker metadata is currently in-memory. The local gRPC channel uses plaintext and should be secured before deployment outside a trusted environment.
+- **Container Port Forwarding**: Bind host ports dynamically so containers can be reached directly via `http://localhost:<hostPort>`.
+- **YAML Manifest Support**: Implement `minik8s apply -f <manifest.yaml>` to parse Kubernetes-like YAML manifests.
+- **State Persistence**: Store Master state in SQLite/H2 or JSON files to survive Master restarts.
+- **Rolling Updates**: Gracefully replace older containers when deployment image is updated.
+- **Authentication & mTLS**: Secure gRPC transport with mutual TLS for non-local multi-machine deployments.

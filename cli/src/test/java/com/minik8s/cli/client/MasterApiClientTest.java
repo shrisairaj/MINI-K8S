@@ -278,6 +278,51 @@ class MasterApiClientTest {
     }
 
     // -----------------------------------------------------------------------
+    // Deployment & Replica tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void createDeployment_success() throws Exception {
+        String json = """
+                {"id":"web","name":"web","image":"nginx:latest","desiredReplicas":2,"runningReplicas":0,"containerPort":80,"status":"PENDING","replicas":[]}
+                """;
+        stubResponse(201, json);
+        var res = client.createDeployment(new com.minik8s.cli.model.CreateDeploymentRequest("web", "web", "nginx:latest", 2, 80));
+        assertNotNull(res);
+        assertEquals("web", res.getName());
+        assertEquals(2, res.getDesiredReplicas());
+    }
+
+    @Test
+    void listDeployments_returnsList() throws Exception {
+        String json = """
+                [{"id":"web","name":"web","image":"nginx:latest","desiredReplicas":1,"runningReplicas":1,"containerPort":80,"status":"RUNNING","replicas":[]}]
+                """;
+        stubResponse(200, json);
+        var list = client.listDeployments();
+        assertEquals(1, list.size());
+        assertEquals("RUNNING", list.get(0).getStatus());
+    }
+
+    @Test
+    void deleteDeployment_success() throws Exception {
+        when(mockResponse.statusCode()).thenReturn(204);
+        org.mockito.Mockito.doReturn(mockResponse).when(mockHttpClient).send(any(HttpRequest.class), any());
+        assertDoesNotThrow(() -> client.deleteDeployment("web"));
+    }
+
+    @Test
+    void listReplicas_returnsList() throws Exception {
+        String json = """
+                [{"replicaId":"rep-1","deploymentId":"web","workerId":"worker-1","image":"nginx:latest","status":"RUNNING"}]
+                """;
+        stubResponse(200, json);
+        var list = client.listReplicas();
+        assertEquals(1, list.size());
+        assertEquals("rep-1", list.get(0).getReplicaId());
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 

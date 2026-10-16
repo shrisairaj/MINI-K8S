@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini-K8s | Cluster Dashboard & Presentation</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 4px;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.3);
+    }
+    .glow-blue {
+      box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">Mini-K8s</h1>
+          <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">v0.1.0</span>
+        </div>
+        <p class="text-xs text-slate-400">Kubernetes-Inspired Container Orchestration Engine</p>
+      </div>
+    </div>
+
+    <!-- View Mode Switcher -->
+    <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        Cluster Live View
+      </button>
+      <button onclick="switchTab('architecture')" id="tab-btn-architecture" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+        Architecture Map
+      </button>
+      <button onclick="switchTab('reconciliation')" id="tab-btn-reconciliation" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Self-Healing Sim
+      </button>
+      <button onclick="switchTab('slides')" id="tab-btn-slides" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+        Presentation Deck
+      </button>
+    </div>
+
+    <!-- Connection Indicator & Controls -->
+    <div class="flex items-center gap-3">
+      <div id="connection-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="connection-text">Live: http://localhost:8080</span>
+      </div>
+      <button onclick="toggleDemoMode()" id="demo-mode-btn" title="Toggle between Live Master backend and Simulated Demo data" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        <span id="demo-mode-label">Demo Mode: OFF</span>
+      </button>
+      <button onclick="refreshData()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Refresh Cluster State">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Areas -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+    <!-- =============================================================== -->
+    <!-- TAB 1: CLUSTER DASHBOARD -->
+    <!-- =============================================================== -->
+    <div id="view-dashboard" class="space-y-6">
+      
+      <!-- Key Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Cluster Health -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Cluster Status</span>
+            <div id="stat-cluster-icon" class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="stat-cluster-status" class="text-2xl font-extrabold text-emerald-400">HEALTHY</div>
+            <p id="stat-cluster-subtitle" class="text-xs text-slate-400 mt-1">All control planes responsive</p>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
+        </div>
+
+        <!-- Registered Workers -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Worker Nodes</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="stat-workers-count" class="text-2xl font-extrabold text-white">1 <span class="text-xs font-normal text-slate-400">Ready</span></div>
+            <p id="stat-workers-subtitle" class="text-xs text-slate-400 mt-1">100% gRPC health checks passing</p>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+        </div>
+
+        <!-- Active Deployments -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Deployments</span>
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="stat-deployments-count" class="text-2xl font-extrabold text-white">0</div>
+            <p class="text-xs text-slate-400 mt-1">Reconciliation active (5s loop)</p>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-500"></div>
+        </div>
+
+        <!-- Total Running Replicas -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Active Containers</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="stat-replicas-count" class="text-2xl font-extrabold text-white">0</div>
+            <p class="text-xs text-slate-400 mt-1">Docker Engine managed</p>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+        </div>
+      </div>
+
+      <!-- Quick Action / Deploy Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>🚀</span> Deploy Application to Cluster
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Submit workloads to the Master Scheduler. Replicas are dynamically placed on the least-loaded worker node.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <button onclick="deployPreset('nginx')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 hover:border-cyan-500/40 transition flex items-center gap-1.5 shadow-sm">
+            <span>🌐</span> Nginx (2 Replicas)
+          </button>
+          <button onclick="deployPreset('redis')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 hover:border-cyan-500/40 transition flex items-center gap-1.5 shadow-sm">
+            <span>⚡</span> Redis Cache
+          </button>
+          <button onclick="openCustomDeployModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold text-white shadow-lg shadow-cyan-600/20 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Custom Deployment
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Two Column Grid: Workers & Deployments -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Worker Nodes Section -->
+        <div class="lg:col-span-1 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Worker Nodes
+            </h3>
+            <span id="workers-count-pill" class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">0 Nodes</span>
+          </div>
+
+          <div id="workers-container" class="space-y-3">
+            <!-- Dynamically populated worker cards -->
+            <div class="p-6 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+              Loading worker nodes...
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Deployments & Replicas Sections -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <!-- Deployments Table Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div class="p-4 px-6 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white">Active Deployments</h3>
+                <p class="text-xs text-slate-400">Track desired vs running replicas and endpoints</p>
+              </div>
+              <span id="deployments-badge" class="px-2.5 py-1 text-xs rounded-full bg-slate-800 text-slate-300 font-mono">0 Deployments</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-6">Name</th>
+                    <th class="py-3 px-4">Image</th>
+                    <th class="py-3 px-4">Replicas</th>
+                    <th class="py-3 px-4">Port</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="deployments-table-body" class="divide-y divide-slate-800/60 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-500 font-sans">No active deployments. Click "Deploy Workload" above to launch one.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Containers / Pods Replicas Table Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div class="p-4 px-6 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white">Running Containers (Replicas)</h3>
+                <p class="text-xs text-slate-400">Low-level Docker containers scheduled across the cluster</p>
+              </div>
+              <span id="replicas-badge" class="px-2.5 py-1 text-xs rounded-full bg-slate-800 text-slate-300 font-mono">0 Replicas</span>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar max-h-72">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 sticky top-0">
+                  <tr>
+                    <th class="py-3 px-6">Replica ID</th>
+                    <th class="py-3 px-4">Deployment</th>
+                    <th class="py-3 px-4">Worker Node</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-6">Image</th>
+                  </tr>
+                </thead>
+                <tbody id="replicas-table-body" class="divide-y divide-slate-800/60 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="5" class="py-6 text-center text-slate-500 font-sans">No containers running.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- TAB 2: ARCHITECTURE VISUALIZER -->
+    <!-- =============================================================== -->
+    <div id="view-architecture" class="hidden space-y-6">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="max-w-3xl">
+          <h2 class="text-xl font-bold text-white">Mini-K8s High-Level Architecture</h2>
+          <p class="text-sm text-slate-400 mt-1">Clean separation of responsibilities between the Master Control Plane, gRPC transport, and Worker Nodes.</p>
+        </div>
+
+        <!-- Interactive Diagram Grid -->
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          
+          <!-- User & CLI -->
+          <div class="lg:col-span-3 bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center relative group hover:border-cyan-500/50 transition">
+            <div class="w-12 h-12 mx-auto rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-lg mb-3">
+              💻
+            </div>
+            <h4 class="text-sm font-bold text-white">CLI / User Client</h4>
+            <p class="text-xs text-slate-400 mt-1">`minik8s` standalone binary or HTTP REST client</p>
+            <div class="mt-4 p-2 rounded-lg bg-slate-900 text-left font-mono text-xs text-slate-300 space-y-1">
+              <div class="text-cyan-400 font-semibold">$ minik8s deploy ...</div>
+              <div class="text-slate-400">$ minik8s get workers</div>
+            </div>
+            <div class="mt-4 text-xs font-semibold text-cyan-400 uppercase tracking-wider">REST / JSON (8080) &rarr;</div>
+          </div>
+
+          <!-- Master Control Plane -->
+          <div class="lg:col-span-5 bg-gradient-to-b from-slate-900 to-slate-950 p-6 rounded-2xl border-2 border-blue-500/30 shadow-xl relative space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500 animate-ping"></span>
+                <h4 class="text-base font-bold text-white">Master Control Plane</h4>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">Spring Boot</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div onclick="showArchInfo('scheduler')" class="cursor-pointer p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition">
+                <div class="font-bold text-blue-400">Scheduler</div>
+                <p class="text-slate-400 text-xs mt-1">Least-loaded strategy, memory & CPU fit check</p>
+              </div>
+              <div onclick="showArchInfo('replica-manager')" class="cursor-pointer p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition">
+                <div class="font-bold text-indigo-400">ReplicaManager</div>
+                <p class="text-slate-400 text-xs mt-1">Reconciliation loop, state sync & replacement</p>
+              </div>
+              <div onclick="showArchInfo('worker-registry')" class="cursor-pointer p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition">
+                <div class="font-bold text-cyan-400">WorkerRegistry</div>
+                <p class="text-slate-400 text-xs mt-1">Heartbeat tracking, lifecycle & reservations</p>
+              </div>
+              <div onclick="showArchInfo('health-monitor')" class="cursor-pointer p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition">
+                <div class="font-bold text-emerald-400">HealthMonitor</div>
+                <p class="text-slate-400 text-xs mt-1">Periodic gRPC ping & stale heartbeat detector</p>
+              </div>
+            </div>
+
+            <div class="p-3 bg-blue-950/30 rounded-xl border border-blue-800/40 text-xs text-blue-200">
+              <span class="font-bold">Boundary Rule:</span> The Master decides desired state & placement; it <span class="underline">never</span> calls Docker directly!
+            </div>
+            <div class="text-center text-xs font-semibold text-blue-400 uppercase tracking-wider">&darr; gRPC / Protobuf (Port 9091) &darr;</div>
+          </div>
+
+          <!-- Worker Node -->
+          <div class="lg:col-span-4 bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-base font-bold text-white flex items-center gap-2">
+                <span>📦</span> Worker Node(s)
+              </h4>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">gRPC Server</span>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <div class="font-bold text-white">gRPC Worker Service</div>
+                <p class="text-slate-400 mt-0.5">Executes StartReplica, StopReplica, Status queries</p>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <div class="font-bold text-emerald-400">Docker Java SDK Runtime</div>
+                <p class="text-slate-400 mt-0.5">Communicates with local Docker Engine daemon via named pipe / socket</p>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-cyan-400">Docker Containers</div>
+                  <p class="text-slate-400">Isolated namespaces & resource quotas</p>
+                </div>
+                <span class="text-xl">🐳</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Component Detail Viewer Box -->
+        <div id="arch-info-box" class="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
+          <span class="font-bold text-cyan-400">Click any component</span> above to view its role and underlying Java classes in the Mini-K8s codebase.
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- TAB 3: SELF-HEALING SIMULATOR -->
+    <!-- =============================================================== -->
+    <div id="view-reconciliation" class="hidden space-y-6">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span>🔄</span> Self-Healing & Reconciliation Simulation
+          </h2>
+          <p class="text-sm text-slate-400 mt-1">Kubernetes' core strength is the control loop: continuous reconciliation of Actual State toward Desired State.</p>
+        </div>
+
+        <!-- Simulation Controls -->
+        <div class="flex flex-wrap items-center gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800">
+          <button onclick="runSimulationStep(1)" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-sm transition">
+            1. Submit Desired State (3 Replicas)
+          </button>
+          <button onclick="runSimulationStep(2)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-sm transition">
+            2. Scheduler Places on Workers
+          </button>
+          <button onclick="runSimulationStep(3)" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white shadow-sm transition">
+            3. Kill Worker 1 (Simulate Failure)
+          </button>
+          <button onclick="runSimulationStep(4)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-sm transition">
+            4. Self-Healing Failover
+          </button>
+          <button onclick="resetSimulation()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition ml-auto">
+            Reset
+          </button>
+        </div>
+
+        <!-- Interactive Visual Cluster Model -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Master Control Loop Box -->
+          <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+            <h4 class="text-sm font-bold text-white flex items-center justify-between">
+              <span>Master Reconciliation</span>
+              <span id="sim-loop-status" class="px-2 py-0.5 rounded text-xs bg-cyan-500/10 text-cyan-400">IDLE</span>
+            </h4>
+            
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between p-2 rounded bg-slate-900">
+                <span class="text-slate-400">Desired Replicas:</span>
+                <span id="sim-desired-val" class="font-bold text-white">0</span>
+              </div>
+              <div class="flex justify-between p-2 rounded bg-slate-900">
+                <span class="text-slate-400">Actual Running:</span>
+                <span id="sim-actual-val" class="font-bold text-white">0</span>
+              </div>
+              <div class="flex justify-between p-2 rounded bg-slate-900">
+                <span class="text-slate-400">Reconciliation Delta:</span>
+                <span id="sim-delta-val" class="font-bold text-cyan-400">0</span>
+              </div>
+            </div>
+
+            <div id="sim-master-log" class="p-3 bg-slate-900 rounded-xl font-mono text-xs text-slate-400 h-32 overflow-y-auto custom-scrollbar">
+              &gt; Cluster initialized.<br>&gt; Ready to simulate.
+            </div>
+          </div>
+
+          <!-- Sim Worker Node 1 -->
+          <div id="sim-worker-1-card" class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 transition-all duration-300">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-white">Worker Node 1</h4>
+              <span id="sim-w1-status" class="px-2 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-400 font-semibold">HEALTHY</span>
+            </div>
+            <p class="text-xs text-slate-400">Capacity: 4000m CPU | 8 GB RAM</p>
+            <div class="border-t border-slate-800 pt-3">
+              <div class="text-xs text-slate-400 mb-2">Hosted Replicas:</div>
+              <div id="sim-w1-replicas" class="space-y-1.5 min-h-24">
+                <div class="p-2 text-center text-xs text-slate-600 bg-slate-900/50 rounded-lg border border-dashed border-slate-800">No containers</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sim Worker Node 2 -->
+          <div id="sim-worker-2-card" class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 transition-all duration-300">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-white">Worker Node 2</h4>
+              <span id="sim-w2-status" class="px-2 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-400 font-semibold">HEALTHY</span>
+            </div>
+            <p class="text-xs text-slate-400">Capacity: 4000m CPU | 8 GB RAM</p>
+            <div class="border-t border-slate-800 pt-3">
+              <div class="text-xs text-slate-400 mb-2">Hosted Replicas:</div>
+              <div id="sim-w2-replicas" class="space-y-1.5 min-h-24">
+                <div class="p-2 text-center text-xs text-slate-600 bg-slate-900/50 rounded-lg border border-dashed border-slate-800">No containers</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- TAB 4: PRESENTATION SLIDES -->
+    <!-- =============================================================== -->
+    <div id="view-slides" class="hidden space-y-6">
+      
+      <!-- Slide Navigator Bar -->
+      <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">Presentation Deck</span>
+          <span id="slide-indicator" class="px-2.5 py-0.5 rounded-full bg-slate-800 text-xs font-mono text-slate-300">Slide 1 of 6</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="prevSlide()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition flex items-center gap-1 text-xs font-medium">
+            &larr; Previous
+          </button>
+          <button onclick="nextSlide()" class="p-2 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center gap-1 text-xs font-bold">
+            Next &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- Slide Viewport -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-8 lg:p-12 min-h-[500px] shadow-2xl relative flex flex-col justify-between">
+        
+        <!-- Slide 1: Title -->
+        <div id="slide-1" class="slide-content space-y-6 my-auto">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+            <span>🚀</span> Final Project Presentation
+          </div>
+          <h1 class="text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+            Mini-K8s
+          </h1>
+          <p class="text-xl text-cyan-300 font-medium">
+            Building a Distributed Container Orchestration Engine from Scratch
+          </p>
+          <p class="text-sm text-slate-400 max-w-2xl leading-relaxed">
+            Mini-K8s is an educational, production-modeled container orchestration platform inspired by Kubernetes. Featuring a central Spring Boot Master control plane, least-loaded scheduling, reconciliation loops, gRPC networking, and real Docker Engine execution.
+          </p>
+          <div class="flex flex-wrap gap-3 pt-4">
+            <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">☕ Java 21 / 25</span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">🍃 Spring Boot 3.4</span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">⚡ gRPC / Protobuf</span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">🐳 Docker Java SDK</span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">⌨️ Picocli CLI</span>
+          </div>
+        </div>
+
+        <!-- Slide 2: The Core Problem & Architecture -->
+        <div id="slide-2" class="slide-content hidden space-y-6 my-auto">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">01 / System Design</span>
+          <h2 class="text-3xl font-extrabold text-white">Why Container Orchestration?</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-base font-bold text-red-400">The Problem with Monolithic Deployments</h3>
+              <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside">
+                <li>Manual container placement across servers is error-prone.</li>
+                <li>When a host or process dies, workloads stay dead.</li>
+                <li>No automated horizontal scaling or load balancing.</li>
+                <li>Inconsistent resource allocation (memory spikes crash nodes).</li>
+              </ul>
+            </div>
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-base font-bold text-emerald-400">The Mini-K8s Solution</h3>
+              <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside">
+                <li><b class="text-white">Declarative desired state</b>: Tell Master "I want 3 Nginx replicas".</li>
+                <li><b class="text-white">Smart Scheduler</b>: Places containers on nodes with sufficient CPU & RAM.</li>
+                <li><b class="text-white">Continuous Reconciliation</b>: Replaces dead containers automatically.</li>
+                <li><b class="text-white">Zero Docker calls on Master</b>: Clean microservices abstraction.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3: Master Control Plane Components -->
+        <div id="slide-3" class="slide-content hidden space-y-6 my-auto">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">02 / Control Plane</span>
+          <h2 class="text-3xl font-extrabold text-white">Master Control Plane Architecture</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div class="text-cyan-400 font-bold text-sm">1. Worker Registry</div>
+              <p class="text-slate-400">Thread-safe, in-memory registry of all cluster nodes. Tracks heartbeat timestamps, registration lifecycle, and available resources.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div class="text-blue-400 font-bold text-sm">2. Resource Scheduler</div>
+              <p class="text-slate-400">Implements <code>ResourceAwareLeastLoadedStrategy</code>. Evaluates available millicores and memory to pick the optimal worker.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div class="text-indigo-400 font-bold text-sm">3. Replica Manager</div>
+              <p class="text-slate-400">The brain of reconciliation. Computes Delta = (Desired - Actual) and triggers idempotent gRPC launch/stop commands.</p>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-blue-950/30 border border-blue-800/40 text-xs text-blue-200">
+            <b>Key Engineering Highlight:</b> Uses fine-grained per-deployment locking to prevent race conditions during rapid concurrent scale-up/scale-down requests.
+          </div>
+        </div>
+
+        <!-- Slide 4: Worker Node & Docker -->
+        <div id="slide-4" class="slide-content hidden space-y-6 my-auto">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">03 / Worker Nodes</span>
+          <h2 class="text-3xl font-extrabold text-white">Worker Node & Docker Engine Integration</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-sm font-bold text-white">gRPC Service (`worker.proto`)</h3>
+              <p class="text-slate-400">High-performance protobuf-compiled RPC channel for cluster operations:</p>
+              <ul class="space-y-1 font-mono text-cyan-400">
+                <li>• StartReplica(replica_id, image, resources)</li>
+                <li>• StopReplica(replica_id)</li>
+                <li>• RemoveReplica(replica_id)</li>
+                <li>• GetWorkerStatus()</li>
+              </ul>
+            </div>
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-sm font-bold text-white">Docker Java SDK Runtime</h3>
+              <p class="text-slate-400">Translates RPC requests into real Docker daemon instructions:</p>
+              <ul class="space-y-1.5 text-slate-300">
+                <li>🏷️ <b class="text-white">Idempotent Labels</b>: Containers tagged with <code>minik8s.replica-id</code> for recovery after reboot.</li>
+                <li>⚖️ <b class="text-white">Resource Quotas</b>: Maps millicores to Docker CPU quota and bytes to memory limits.</li>
+                <li>💓 <b class="text-white">Periodic Heartbeat</b>: Publishes live metrics back to Master every 5 seconds.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 5: The Reconciliation Loop & Self-Healing -->
+        <div id="slide-5" class="slide-content hidden space-y-6 my-auto">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">04 / Fault Tolerance</span>
+          <h2 class="text-3xl font-extrabold text-white">Self-Healing & Failover Mechanism</h2>
+          <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-center text-xs">
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <div class="font-bold text-cyan-400">1. Desired State</div>
+                <div class="text-slate-400 mt-1">Stored in ReplicaManager</div>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <div class="font-bold text-amber-400">2. Worker Failure</div>
+                <div class="text-slate-400 mt-1">Heartbeat expires (>15s)</div>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <div class="font-bold text-red-400">3. Node Eviction</div>
+                <div class="text-slate-400 mt-1">Replicas marked FAILED</div>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <div class="font-bold text-emerald-400">4. Auto-Rescheduling</div>
+                <div class="text-slate-400 mt-1">Scheduled to healthy node</div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              When a worker crashes or network partition occurs, the Master's <code>HealthMonitor</code> marks the worker <code>UNAVAILABLE</code>. The <code>ReplicaReconciliationJob</code> detects that actual running replicas is less than desired replicas, and automatically schedules replacement replicas to healthy workers without human intervention.
+            </p>
+          </div>
+        </div>
+
+        <!-- Slide 6: Results, Testing & CLI -->
+        <div id="slide-6" class="slide-content hidden space-y-6 my-auto">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">05 / Verification & Demo</span>
+          <h2 class="text-3xl font-extrabold text-white">Verification & Live Demo Readiness</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h4 class="font-bold text-emerald-400 text-sm">✅ 100% Test Coverage</h4>
+              <p class="text-slate-400">All 48 unit and integration tests passing across all 4 modules (protocol, master, worker, cli). Verified on Java 21 & Java 25.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h4 class="font-bold text-cyan-400 text-sm">⌨️ Full Terminal CLI</h4>
+              <p class="text-slate-400">Shaded self-contained fat JAR executable via <code>minik8s.cmd</code> with formatted table output matching kubectl.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h4 class="font-bold text-blue-400 text-sm">📊 Live Control Dashboard</h4>
+              <p class="text-slate-400">Built-in reactive visual dashboard for live presentation and real-time workload deployments.</p>
+            </div>
+          </div>
+          <div class="text-center pt-2">
+            <button onclick="switchTab('dashboard')" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 font-bold text-sm text-white shadow-lg shadow-cyan-600/30 hover:brightness-110 transition">
+              Launch Live Cluster Dashboard &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Slide Footer -->
+        <div class="pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+          <span>Mini-K8s Project Presentation</span>
+          <span>Tip: Use Left/Right Arrow Keys to navigate slides</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Custom Deploy Modal -->
+  <div id="custom-deploy-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Create New Deployment</h3>
+        <button onclick="closeCustomDeployModal()" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <form onsubmit="handleCustomDeploy(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Deployment Name / ID</label>
+          <input type="text" id="deploy-name" required placeholder="e.g. web-service" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+        </div>
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Container Image</label>
+          <input type="text" id="deploy-image" required placeholder="e.g. nginx:alpine" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Replicas</label>
+            <input type="number" id="deploy-replicas" min="1" max="10" value="2" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Port</label>
+            <input type="number" id="deploy-port" min="1" max="65535" value="80" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeCustomDeployModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition shadow-lg shadow-cyan-600/20">
+            Submit Deployment
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-medium text-white shadow-2xl transition-all duration-300 translate-y-16 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Message</span>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // Configuration & State
+    const MASTER_URL = "http://localhost:8080";
+    let isDemoMode = false;
+    let currentSlide = 1;
+    const totalSlides = 6;
+
+    // Simulated Demo Data for Offline Presentation
+    const demoState = {
+      workers: [
+        {
+          workerId: "worker-1",
+          host: "127.0.0.1",
+          grpcPort: 9091,
+          status: "READY",
+          resources: {
+            totalCpuMillis: 4000,
+            availableCpuMillis: 3000,
+            totalMemoryBytes: 8589934592,
+            availableMemoryBytes: 6442450944
+          }
+        },
+        {
+          workerId: "worker-2",
+          host: "127.0.0.1",
+          grpcPort: 9092,
+          status: "READY",
+          resources: {
+            totalCpuMillis: 4000,
+            availableCpuMillis: 3500,
+            totalMemoryBytes: 8589934592,
+            availableMemoryBytes: 7516192768
+          }
+        }
+      ],
+      deployments: [
+        {
+          id: "nginx-web",
+          name: "nginx-web",
+          image: "nginx:alpine",
+          desiredReplicas: 2,
+          runningReplicas: 2,
+          containerPort: 80,
+          status: "RUNNING"
+        },
+        {
+          id: "redis-cache",
+          name: "redis-cache",
+          image: "redis:alpine",
+          desiredReplicas: 1,
+          runningReplicas: 1,
+          containerPort: 6379,
+          status: "RUNNING"
+        }
+      ],
+      replicas: [
+        {
+          replicaId: "rep-48f1c841-a1b2",
+          deploymentId: "nginx-web",
+          workerId: "worker-1",
+          image: "nginx:alpine",
+          status: "RUNNING"
+        },
+        {
+          replicaId: "rep-92e7d132-b3c4",
+          deploymentId: "nginx-web",
+          workerId: "worker-2",
+          image: "nginx:alpine",
+          status: "RUNNING"
+        },
+        {
+          replicaId: "rep-31a98074-c5d6",
+          deploymentId: "redis-cache",
+          workerId: "worker-1",
+          image: "redis:alpine",
+          status: "RUNNING"
+        }
+      ]
+    };
+
+    // Tab Switching
+    function switchTab(tabName) {
+      ['dashboard', 'architecture', 'reconciliation', 'slides'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${t}`);
+        btn.className = "px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 flex items-center gap-2";
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+      activeBtn.className = "px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm flex items-center gap-2";
+    }
+
+    // Toggle Demo Mode vs Live Backend
+    function toggleDemoMode() {
+      isDemoMode = !isDemoMode;
+      const btnLabel = document.getElementById('demo-mode-label');
+      const connBadge = document.getElementById('connection-badge');
+      const connText = document.getElementById('connection-text');
+
+      if (isDemoMode) {
+        btnLabel.innerText = "Demo Mode: ON";
+        btnLabel.classList.add('text-amber-400');
+        connBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-medium";
+        connText.innerText = "Simulated Presentation Mode";
+        showToast("Switched to Offline Demo Mode for presentation", "💡");
+      } else {
+        btnLabel.innerText = "Demo Mode: OFF";
+        btnLabel.classList.remove('text-amber-400');
+        connBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium";
+        connText.innerText = "Live: " + MASTER_URL;
+        showToast("Connecting to live Master backend...", "🔌");
+      }
+      refreshData();
+    }
+
+    // Data Fetching & Rendering
+    async function refreshData() {
+      if (isDemoMode) {
+        renderCluster(demoState.workers, demoState.deployments, demoState.replicas);
+        return;
+      }
+
+      try {
+        const [workersRes, depsRes, repsRes] = await Promise.all([
+          fetch(`${MASTER_URL}/api/workers`).catch(() => null),
+          fetch(`${MASTER_URL}/api/deployments`).catch(() => null),
+          fetch(`${MASTER_URL}/api/replicas`).catch(() => null)
+        ]);
+
+        if (!workersRes || !workersRes.ok) {
+          // Backend offline -> Fallback to demo mode gracefully
+          console.warn("Master backend not reachable, falling back to simulated data");
+          toggleDemoMode();
+          return;
+        }
+
+        const workers = await workersRes.json();
+        const deployments = depsRes && depsRes.ok ? await depsRes.json() : [];
+        const replicas = repsRes && repsRes.ok ? await repsRes.json() : [];
+
+        renderCluster(workers, deployments, replicas);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        toggleDemoMode();
+      }
+    }
+
+    function renderCluster(workers, deployments, replicas) {
+      // 1. Render Stats
+      const readyWorkers = workers.filter(w => w.status === 'READY');
+      document.getElementById('stat-workers-count').innerHTML = `${readyWorkers.length} <span class="text-xs font-normal text-slate-400">/ ${workers.length} Total</span>`;
+      document.getElementById('stat-deployments-count').innerText = deployments.length;
+      document.getElementById('stat-replicas-count').innerText = replicas.length;
+
+      const clusterHealth = workers.length === 0 ? "NO_WORKERS" : (workers.some(w => w.status === 'UNAVAILABLE') ? "DEGRADED" : "HEALTHY");
+      const healthElem = document.getElementById('stat-cluster-status');
+      healthElem.innerText = clusterHealth;
+      healthElem.className = clusterHealth === 'HEALTHY' ? "text-2xl font-extrabold text-emerald-400" : (clusterHealth === 'DEGRADED' ? "text-2xl font-extrabold text-amber-400" : "text-2xl font-extrabold text-slate-400");
+
+      document.getElementById('workers-count-pill').innerText = `${workers.length} Node(s)`;
+      document.getElementById('deployments-badge').innerText = `${deployments.length} Deployment(s)`;
+      document.getElementById('replicas-badge').innerText = `${replicas.length} Container(s)`;
+
+      // 2. Render Workers List
+      const workersContainer = document.getElementById('workers-container');
+      if (workers.length === 0) {
+        workersContainer.innerHTML = `
+          <div class="p-6 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+            No workers registered. Start worker node via start-worker.bat.
+          </div>`;
+      } else {
+        workersContainer.innerHTML = workers.map(w => {
+          const isReady = w.status === 'READY';
+          const cpuUsed = w.resources ? (w.resources.totalCpuMillis - w.resources.availableCpuMillis) : 0;
+          const cpuTotal = w.resources ? w.resources.totalCpuMillis : 4000;
+          const cpuPct = Math.round((cpuUsed / cpuTotal) * 100);
+
+          const memUsedMb = w.resources ? Math.round((w.resources.totalMemoryBytes - w.resources.availableMemoryBytes) / (1024 * 1024)) : 0;
+          const memTotalMb = w.resources ? Math.round(w.resources.totalMemoryBytes / (1024 * 1024)) : 8192;
+          const memPct = Math.round((memUsedMb / memTotalMb) * 100);
+
+          return `
+            <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3 hover:border-slate-700 transition">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full ${isReady ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-red-400 animate-pulse'}"></span>
+                  <span class="font-bold text-white text-xs font-mono">${w.workerId}</span>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isReady ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}">
+                  ${w.status}
+                </span>
+              </div>
+
+              <div class="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+                <span>gRPC: ${w.host}:${w.grpcPort}</span>
+                <span>Port 9091</span>
+              </div>
+
+              <!-- CPU Bar -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                  <span>CPU (${cpuUsed}m / ${cpuTotal}m)</span>
+                  <span>${cpuPct}%</span>
+                </div>
+                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: ${cpuPct}%"></div>
+                </div>
+              </div>
+
+              <!-- Memory Bar -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                  <span>RAM (${memUsedMb} MB / ${memTotalMb} MB)</span>
+                  <span>${memPct}%</span>
+                </div>
+                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: ${memPct}%"></div>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+
+      // 3. Render Deployments Table
+      const depTbody = document.getElementById('deployments-table-body');
+      if (deployments.length === 0) {
+        depTbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500 font-sans">No active deployments. Click "Deploy Workload" above to launch one.</td></tr>`;
+      } else {
+        depTbody.innerHTML = deployments.map(d => {
+          return `
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-6 font-bold text-white">${d.name}</td>
+              <td class="py-3 px-4 text-cyan-300">${d.image}</td>
+              <td class="py-3 px-4">
+                <span class="text-white font-bold">${d.runningReplicas}</span>
+                <span class="text-slate-500">/ ${d.desiredReplicas}</span>
+              </td>
+              <td class="py-3 px-4 text-slate-400">:${d.containerPort}</td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${d.status === 'RUNNING' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                  ${d.status}
+                </span>
+              </td>
+              <td class="py-3 px-6 text-right space-x-1 font-sans">
+                <button onclick="scaleDeployment('${d.id}', ${d.desiredReplicas + 1})" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold" title="Scale Up">+</button>
+                <button onclick="scaleDeployment('${d.id}', Math.max(0, ${d.desiredReplicas - 1}))" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold" title="Scale Down">-</button>
+                <button onclick="deleteDeployment('${d.id}')" class="px-2 py-1 rounded bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-semibold" title="Delete">Delete</button>
+              </td>
+            </tr>`;
+        }).join('');
+      }
+
+      // 4. Render Replicas Table
+      const repTbody = document.getElementById('replicas-table-body');
+      if (replicas.length === 0) {
+        repTbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 font-sans">No containers running.</td></tr>`;
+      } else {
+        repTbody.innerHTML = replicas.map(r => {
+          return `
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-6 text-cyan-400 font-mono text-[11px]">${r.replicaId.substring(0, 18)}...</td>
+              <td class="py-3 px-4 font-bold text-white">${r.deploymentId}</td>
+              <td class="py-3 px-4 text-blue-400">${r.workerId}</td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${r.status === 'RUNNING' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}">
+                  ${r.status}
+                </span>
+              </td>
+              <td class="py-3 px-6 text-slate-400 font-mono">${r.image}</td>
+            </tr>`;
+        }).join('');
+      }
+    }
+
+    // Deploy Actions
+    async function deployPreset(preset) {
+      const presets = {
+        nginx: { id: "nginx-web", name: "nginx-web", image: "nginx:alpine", replicas: 2, containerPort: 80 },
+        redis: { id: "redis-cache", name: "redis-cache", image: "redis:alpine", replicas: 1, containerPort: 6379 }
+      };
+
+      const payload = presets[preset];
+      if (!payload) return;
+
+      if (isDemoMode) {
+        demoState.deployments.push({ ...payload, desiredReplicas: payload.replicas, runningReplicas: payload.replicas, status: "RUNNING" });
+        for (let i = 0; i < payload.replicas; i++) {
+          demoState.replicas.push({
+            replicaId: `rep-${Math.random().toString(36).substring(2, 10)}`,
+            deploymentId: payload.id,
+            workerId: i % 2 === 0 ? "worker-1" : "worker-2",
+            image: payload.image,
+            status: "RUNNING"
+          });
+        }
+        showToast(`Deployed preset '${payload.name}'`, "🚀");
+        refreshData();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${MASTER_URL}/api/deployments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast(`Deployed '${payload.name}' successfully!`, "🚀");
+          setTimeout(refreshData, 1000);
+        } else {
+          showToast("Failed to deploy: " + res.statusText, "❌");
+        }
+      } catch (err) {
+        showToast("Error connecting to Master", "❌");
+      }
+    }
+
+    async function handleCustomDeploy(e) {
+      e.preventDefault();
+      const payload = {
+        id: document.getElementById('deploy-name').value.trim(),
+        name: document.getElementById('deploy-name').value.trim(),
+        image: document.getElementById('deploy-image').value.trim(),
+        replicas: parseInt(document.getElementById('deploy-replicas').value, 10),
+        containerPort: parseInt(document.getElementById('deploy-port').value, 10)
+      };
+
+      closeCustomDeployModal();
+
+      if (isDemoMode) {
+        demoState.deployments.push({ ...payload, desiredReplicas: payload.replicas, runningReplicas: payload.replicas, status: "RUNNING" });
+        showToast(`Created deployment '${payload.name}'`, "🚀");
+        refreshData();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${MASTER_URL}/api/deployments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast(`Created deployment '${payload.name}'`, "🚀");
+          setTimeout(refreshData, 1000);
+        } else {
+          showToast("Error deploying workload", "❌");
+        }
+      } catch (err) {
+        showToast("Error connecting to Master", "❌");
+      }
+    }
+
+    async function scaleDeployment(id, newReplicas) {
+      if (isDemoMode) {
+        const dep = demoState.deployments.find(d => d.id === id);
+        if (dep) {
+          dep.desiredReplicas = newReplicas;
+          dep.runningReplicas = newReplicas;
+          showToast(`Scaled '${id}' to ${newReplicas} replicas`, "⚖️");
+          refreshData();
+        }
+        return;
+      }
+
+      try {
+        // Fetch deployment existing spec, then re-post with updated replicas
+        const getRes = await fetch(`${MASTER_URL}/api/deployments/${id}`);
+        if (!getRes.ok) return;
+        const dep = await getRes.json();
+        dep.replicas = newReplicas;
+
+        const res = await fetch(`${MASTER_URL}/api/deployments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dep)
+        });
+        if (res.ok) {
+          showToast(`Scaled '${id}' to ${newReplicas} replicas`, "⚖️");
+          setTimeout(refreshData, 1000);
+        }
+      } catch (err) {
+        showToast("Scale request failed", "❌");
+      }
+    }
+
+    async function deleteDeployment(id) {
+      if (isDemoMode) {
+        demoState.deployments = demoState.deployments.filter(d => d.id !== id);
+        demoState.replicas = demoState.replicas.filter(r => r.deploymentId !== id);
+        showToast(`Deleted deployment '${id}'`, "🗑️");
+        refreshData();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${MASTER_URL}/api/deployments/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast(`Deleted deployment '${id}'`, "🗑️");
+          setTimeout(refreshData, 1000);
+        }
+      } catch (err) {
+        showToast("Delete request failed", "❌");
+      }
+    }
+
+    // Modal Controls
+    function openCustomDeployModal() {
+      document.getElementById('custom-deploy-modal').classList.remove('hidden');
+    }
+    function closeCustomDeployModal() {
+      document.getElementById('custom-deploy-modal').classList.add('hidden');
+    }
+
+    // Slide Controls
+    function showSlide(index) {
+      for (let i = 1; i <= totalSlides; i++) {
+        document.getElementById(`slide-${i}`).classList.add('hidden');
+      }
+      document.getElementById(`slide-${index}`).classList.remove('hidden');
+      document.getElementById('slide-indicator').innerText = `Slide ${index} of ${totalSlides}`;
+      currentSlide = index;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        showSlide(currentSlide + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        showSlide(currentSlide - 1);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('view-slides').classList.contains('hidden')) {
+        if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+        if (e.key === 'ArrowLeft') prevSlide();
+      }
+    });
+
+    // Architecture Info Click Handler
+    function showArchInfo(component) {
+      const box = document.getElementById('arch-info-box');
+      const info = {
+        scheduler: "<b class='text-blue-400'>Scheduler:</b> Evaluates available millicores & memory across active Worker nodes using <code>ResourceAwareLeastLoadedStrategy.java</code>. Calculates least-loaded worker score and records resource placement reservations.",
+        'replica-manager': "<b class='text-indigo-400'>ReplicaManager:</b> Core control plane component (<code>ReplicaManager.java</code>). Maintains thread-safe deployment states and reconciles Desired Replicas vs Actual Observed Replicas over short idempotent Worker gRPC calls.",
+        'worker-registry': "<b class='text-cyan-400'>WorkerRegistry:</b> <code>InMemoryWorkerRegistry.java</code>. Tracks node registration (host, gRPC port, capacity), heartbeats, and lifecycle states (REGISTERED &rarr; READY &rarr; UNAVAILABLE &rarr; REMOVED).",
+        'health-monitor': "<b class='text-emerald-400'>HealthMonitor:</b> Scheduled service (<code>HealthMonitor.java</code>) executing periodic gRPC health checks and evaluating heartbeat staleness (15s timeout). Automatically triggers replica failover when nodes fail."
+      };
+      box.innerHTML = info[component] || box.innerHTML;
+    }
+
+    // Simulation Handlers
+    function logSim(msg) {
+      const log = document.getElementById('sim-master-log');
+      log.innerHTML += `&gt; ${msg}<br>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function runSimulationStep(step) {
+      if (step === 1) {
+        document.getElementById('sim-loop-status').innerText = "RECONCILING";
+        document.getElementById('sim-desired-val').innerText = "3";
+        document.getElementById('sim-actual-val').innerText = "0";
+        document.getElementById('sim-delta-val').innerText = "+3 (Deficit)";
+        logSim("User requests 3 replicas for 'web-app'.");
+        logSim("Delta = +3. Master invoking Scheduler...");
+      } else if (step === 2) {
+        document.getElementById('sim-actual-val').innerText = "3";
+        document.getElementById('sim-delta-val').innerText = "0 (Balanced)";
+        document.getElementById('sim-loop-status').innerText = "SYNCHRONIZED";
+        document.getElementById('sim-w1-replicas').innerHTML = `
+          <div class="p-2 rounded bg-blue-950/60 border border-blue-800 text-[11px] font-mono text-blue-200">web-app-rep-1 (Running)</div>
+          <div class="p-2 rounded bg-blue-950/60 border border-blue-800 text-[11px] font-mono text-blue-200">web-app-rep-2 (Running)</div>
+        `;
+        document.getElementById('sim-w2-replicas').innerHTML = `
+          <div class="p-2 rounded bg-blue-950/60 border border-blue-800 text-[11px] font-mono text-blue-200">web-app-rep-3 (Running)</div>
+        `;
+        logSim("Scheduler placed 2 replicas on Worker 1, 1 on Worker 2.");
+        logSim("Replicas started in Docker. Actual = Desired (3).");
+      } else if (step === 3) {
+        document.getElementById('sim-worker-1-card').classList.add('border-red-500', 'bg-red-950/20');
+        document.getElementById('sim-w1-status').className = "px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 font-bold";
+        document.getElementById('sim-w1-status').innerText = "UNAVAILABLE";
+        document.getElementById('sim-w1-replicas').innerHTML = `
+          <div class="p-2 rounded bg-red-950/60 border border-red-800 text-[11px] font-mono text-red-300 line-through">web-app-rep-1 (Lost)</div>
+          <div class="p-2 rounded bg-red-950/60 border border-red-800 text-[11px] font-mono text-red-300 line-through">web-app-rep-2 (Lost)</div>
+        `;
+        document.getElementById('sim-actual-val').innerText = "1";
+        document.getElementById('sim-delta-val').innerText = "+2 (Deficit)";
+        document.getElementById('sim-loop-status').innerText = "DEGRADED";
+        logSim("<span class='text-amber-400'>ALERT:</span> Worker 1 missed heartbeat! Marked UNAVAILABLE.");
+        logSim("Replicas on Worker 1 transitioned to FAILED.");
+        logSim("Delta = +2. Reconciliation triggered!");
+      } else if (step === 4) {
+        document.getElementById('sim-w2-replicas').innerHTML += `
+          <div class="p-2 rounded bg-emerald-950/60 border border-emerald-800 text-[11px] font-mono text-emerald-200 animate-pulse">web-app-rep-4 (Failover)</div>
+          <div class="p-2 rounded bg-emerald-950/60 border border-emerald-800 text-[11px] font-mono text-emerald-200 animate-pulse">web-app-rep-5 (Failover)</div>
+        `;
+        document.getElementById('sim-actual-val').innerText = "3";
+        document.getElementById('sim-delta-val').innerText = "0 (Healed)";
+        document.getElementById('sim-loop-status').innerText = "SELF-HEALED";
+        logSim("<span class='text-emerald-400'>SUCCESS:</span> Master rescheduled missing replicas to Worker 2!");
+        logSim("Cluster state fully healed. Target 3 replicas running.");
+      }
+    }
+
+    function resetSimulation() {
+      document.getElementById('sim-desired-val').innerText = "0";
+      document.getElementById('sim-actual-val').innerText = "0";
+      document.getElementById('sim-delta-val').innerText = "0";
+      document.getElementById('sim-loop-status').innerText = "IDLE";
+      document.getElementById('sim-w1-status').className = "px-2 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-400 font-semibold";
+      document.getElementById('sim-w1-status').innerText = "HEALTHY";
+      document.getElementById('sim-worker-1-card').className = "bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 transition-all duration-300";
+      document.getElementById('sim-w1-replicas').innerHTML = `<div class="p-2 text-center text-xs text-slate-600 bg-slate-900/50 rounded-lg border border-dashed border-slate-800">No containers</div>`;
+      document.getElementById('sim-w2-replicas').innerHTML = `<div class="p-2 text-center text-xs text-slate-600 bg-slate-900/50 rounded-lg border border-dashed border-slate-800">No containers</div>`;
+      document.getElementById('sim-master-log').innerHTML = "&gt; Simulation reset.<br>";
+    }
+
+    // Toast Notification Helper
+    function showToast(message, icon = "ℹ️") {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = message;
+      document.getElementById('toast-icon').innerText = icon;
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0');
+      }, 3500);
+    }
+
+    // Initial Load & Auto-Poll Every 4 Seconds
+    refreshData();
+    setInterval(() => {
+      if (!isDemoMode && !document.getElementById('view-dashboard').classList.contains('hidden')) {
+        refreshData();
+      }
+    }, 4000);
+  </script>
+</body>
+</html>

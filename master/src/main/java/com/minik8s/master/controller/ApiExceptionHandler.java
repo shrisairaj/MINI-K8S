@@ -12,8 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
-    @ExceptionHandler(WorkerNotFoundException.class)
-    ProblemDetail handleNotFound(WorkerNotFoundException exception) {
+    @ExceptionHandler({WorkerNotFoundException.class, com.minik8s.master.exception.DeploymentNotFoundException.class})
+    ProblemDetail handleNotFound(RuntimeException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 

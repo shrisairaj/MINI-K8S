@@ -1,68 +1,82 @@
 package com.minik8s.cli.command;
 
+import com.minik8s.cli.client.MasterApiClient;
+import com.minik8s.cli.model.ReplicaResponse;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
-/**
- * Command: {@code minik8s get containers}
- *
- * <h2>Status: NOT AVAILABLE YET</h2>
- *
- * <p>This command requires a Master REST endpoint that does not yet exist.</p>
- *
- * <h2>Required Master API (CLI integration dependency)</h2>
- * <pre>
- *   GET /api/deployments/{deploymentId}/replicas
- *   — or —
- *   GET /api/replicas   (cluster-wide listing)
- *
- *   Expected response: JSON array of replica objects, each containing at minimum:
- *     - replicaId    (String)
- *     - deploymentId (String)
- *     - workerId     (String)
- *     - image        (String)
- *     - status       (String: PENDING, STARTING, RUNNING, STOPPING, STOPPED, FAILED)
- *
- *   The Replica model and ReplicaManager exist internally but there is no REST
- *   controller exposing replicas to external callers yet.
- * </pre>
- *
- * <p>Once Member 1 implements the replica/container REST API, update:
- * <ul>
- *   <li>{@code MasterApiClient} — add {@code listReplicas()} method</li>
- *   <li>{@code com.minik8s.cli.model} — add {@code ReplicaResponse} model</li>
- *   <li>This command — replace stub body with real implementation</li>
- * </ul>
- * </p>
- */
+import java.util.List;
+
 @Command(
         name = "containers",
-        description = {
-                "List all running containers (replicas) in the cluster.",
-                "",
-                "[NOT AVAILABLE YET] Requires Master replica listing API.",
-                "This command will be connected once Member 1 implements the endpoint."
-        },
+        description = "List containers (replicas) in the cluster.",
         mixinStandardHelpOptions = true,
         usageHelpWidth = 80
 )
 public class GetContainersCommand implements Runnable {
 
+    private static final int COL_ID         = 38;
+    private static final int COL_DEPLOYMENT = 18;
+    private static final int COL_WORKER     = 14;
+    private static final int COL_STATUS     = 12;
+    private static final int COL_IMAGE      = 26;
+    private static final String SEPARATOR =
+            "-".repeat(COL_ID + COL_DEPLOYMENT + COL_WORKER + COL_STATUS + COL_IMAGE + 4);
+
     @ParentCommand
     private GetCommand getCommand;
 
+    @Option(names = {"-d", "--deployment"}, description = "Filter containers by deployment ID")
+    private String deploymentId;
+
     @Override
     public void run() {
+        String masterUrl = getCommand.parent.effectiveMasterUrl();
+        MasterApiClient client = new MasterApiClient(masterUrl);
+
+        List<ReplicaResponse> replicas;
+        if (deploymentId != null && !deploymentId.isBlank()) {
+            replicas = client.listDeploymentReplicas(deploymentId);
+        } else {
+            replicas = client.listReplicas();
+        }
+
+        printContainers(replicas);
+    }
+
+    static void printContainers(List<ReplicaResponse> replicas) {
         System.out.println();
-        System.out.println("NOT AVAILABLE YET");
-        System.out.println("Reason: Master container/replica listing API has not been");
-        System.out.println("        implemented by Member 1 yet.");
+        System.out.println("CONTAINERS");
+        System.out.println(SEPARATOR);
+        System.out.printf("%-" + COL_ID + "s %-" + COL_DEPLOYMENT + "s %-" + COL_WORKER + "s %-" + COL_STATUS + "s %-" + COL_IMAGE + "s%n",
+                "REPLICA ID", "DEPLOYMENT", "WORKER", "STATUS", "IMAGE");
+        System.out.println(SEPARATOR);
+
+        if (replicas == null || replicas.isEmpty()) {
+            System.out.println("  (no containers found)");
+        } else {
+            for (ReplicaResponse r : replicas) {
+                System.out.printf("%-" + COL_ID + "s %-" + COL_DEPLOYMENT + "s %-" + COL_WORKER + "s %-" + COL_STATUS + "s %-" + COL_IMAGE + "s%n",
+                        truncate(r.getReplicaId(), COL_ID - 1),
+                        truncate(r.getDeploymentId(), COL_DEPLOYMENT - 1),
+                        truncate(r.getWorkerId(), COL_WORKER - 1),
+                        safe(r.getStatus()),
+                        truncate(r.getImage(), COL_IMAGE - 1));
+            }
+        }
+
+        System.out.println(SEPARATOR);
+        System.out.println("Total: " + (replicas == null ? 0 : replicas.size()) + " container(s)");
         System.out.println();
-        System.out.println("CLI integration dependency:");
-        System.out.println("  Required API: GET /api/deployments/{id}/replicas");
-        System.out.println("             or GET /api/replicas (cluster-wide)");
-        System.out.println("  Expected response: JSON array with replicaId, deploymentId,");
-        System.out.println("                     workerId, image, status");
-        System.out.println();
+    }
+
+    private static String safe(String value) {
+        return value != null ? value : "UNKNOWN";
+    }
+
+    private static String truncate(String value, int maxLen) {
+        if (value == null) return "";
+        return value.length() > maxLen ? value.substring(0, maxLen - 1) + "…" : value;
     }
 }
